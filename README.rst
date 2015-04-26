@@ -15,7 +15,7 @@ Setting up the Verifiers on the Server
 --------------------------------------
 In order to authenticate and derive session keys, verifiers must be
 stored in a non-volatile medium on the server. The verifiers are
-generated once when a "user" is created on the server.
+generated once when a *user* is created on the server.
 
 The Client is the entity where the user enters their password and
 wishes to be authenticated with a SRP server. The communication
@@ -27,7 +27,7 @@ to be used for the common "safe prime". It is acceptable to use 2048
 or 4096 for this value. Each verifier can have a different number of
 safe prime bits - but it must be recorded along with the verifier.
 Every authentication attempt must use the same bit-size for the safe
-prime previously recorded for that verifier.
+prime previously recorded for that verifier. E.g.,::
 
 
     Ih, salt, v, err := srp.Verifier(username, password, Safe_prime_bits)
@@ -81,7 +81,7 @@ Authenticating a Client on the Server
 
 On the server, the authentication attempt begins after receiving the
 initial user credentials. This is used to lookup the stored verifier
-and other bits.
+and other bits.::
 
 
     // Assume that we received the user credentials via the network into 'creds'
@@ -119,20 +119,20 @@ and other bits.
 Other Notes
 -----------
 
-  * The client and server both derive the same value for `RawKey()`. This is
-    the crux of the SRP protocol. Treat this as a "master key".
+* The client and server both derive the same value for `RawKey()`. This is
+  the crux of the SRP protocol. Treat this as a "master key".
 
-  * It is not advisable to use the RawKey() for encryption purposes. It is
-    better to derive a separate key for each direction (client->server
-    and server->client). e.g.,
+* It is not advisable to use the RawKey() for encryption purposes. It is
+  better to derive a separate key for each direction (client->server
+  and server->client). e.g., ::
 
-          c2s_k = KDF(rawkey, "C2S", counter)
-          s2s_k = KDF(rawkey, "S2C", counter)
+      c2s_k = KDF(rawkey, "C2S", counter)
+      s2s_k = KDF(rawkey, "S2C", counter)
 
-  * KDF above can be a reputable key derivation function such as PBKDF2 or
-    Scrypt.  The "counter" is incremented every time you derive a new key. 
+* KDF above can be a reputable key derivation function such as PBKDF2 or
+  Scrypt.  The "counter" is incremented every time you derive a new key. 
 
-  * *I am not a cryptographer*. Please consult your favorite crypto book for
-    deriving encryption keys from a master key.
+* *I am not a cryptographer*. Please consult your favorite crypto book for
+  deriving encryption keys from a master key.
 
 .. vim: ft=rst:sw=4:ts=4:tw=72:
