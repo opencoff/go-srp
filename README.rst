@@ -11,7 +11,8 @@ protocols".
 
 SRP is documented here: http://srp.stanford.edu/doc.html
 
-== Setting up the Verifiers on the Server ==
+Setting up the Verifiers on the Server
+--------------------------------------
 In order to authenticate and derive session keys, verifiers must be
 stored in a non-volatile medium on the server. The verifiers are
 generated once when a "user" is created on the server.
@@ -134,4 +135,4 @@ Other Notes
   * *I am not a cryptographer*. Please consult your favorite crypto book for
     deriving encryption keys from a master key.
 
--- EOF --
+.. vim: ft=rst:sw=4:ts=4:tw=72:
