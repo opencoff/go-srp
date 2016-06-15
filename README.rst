@@ -47,7 +47,7 @@ The client performs the following sequence of steps to authenticate and derive s
         panic(err)
     }
 
-    creds := c.Creds()
+    creds := c.Credentials()
          
     // send the credentials to the server. It is already in ASCII string form.
 
@@ -116,8 +116,20 @@ and other bits.::
     rawkey := s.RawKey()
 
 
+Building the Test Program
+-------------------------
+Use the provided shell script ``gob``::
+
+    ./gob go build t_srp.go
+
+
+
 Other Notes
 -----------
+
+* I wrote ``gob`` to make my life easier with cross-compiling go
+  programs (beginning go 1.5). It comes with a useful help message
+  ``./gob --help``.
 
 * The client and server both derive the same value for `RawKey()`. This is
   the crux of the SRP protocol. Treat this as a "master key".
@@ -126,13 +138,31 @@ Other Notes
   better to derive a separate key for each direction (client->server
   and server->client). e.g., ::
 
-      c2s_k = KDF(rawkey, "C2S", counter)
-      s2s_k = KDF(rawkey, "S2C", counter)
+      c2s_k = KDF(rawkey, counter, "C2S")
+      s2s_k = KDF(rawkey, counter, "S2C")
 
 * KDF above can be a reputable key derivation function such as PBKDF2 or
   Scrypt.  The "counter" is incremented every time you derive a new key. 
 
+
 * *I am not a cryptographer*. Please consult your favorite crypto book for
-  deriving encryption keys from a master key.
+  deriving encryption keys from a master key. Here is a example KDF
+  using ``scrypt``::
+
+    import "golang.org/x/crypto/scrypt"
+
+    // Safe values for Scrypt() parameters
+    const _N int = 65536
+    const _r int = 1024
+    const _p int = 64
+        
+    // key derivation for use 'usage' to generate a 'sz' byte key.
+    func Kdf(key []byte, salt []byte, usage string, sz int) []byte {
+
+        u0 := []byte(usage)
+        pw := append(key, u0...)
+        k, _ := scrypt.Key(pw, salt, _N, _r, _p, sz)
+        return k
+    }
 
 .. vim: ft=rst:sw=4:ts=4:tw=72:

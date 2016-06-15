@@ -85,12 +85,12 @@ import (
     "fmt"
     "crypto/hmac"
     "crypto/sha256"
+    "encoding/hex"
     "io"
     "strings"
 )
 
 import CR "crypto/rand"
-import MR "math/rand"
 
 
 // Map of bits to <g, N> tuple
@@ -290,9 +290,10 @@ func (c *Client) init(I, p []byte, bits int) (err error) {
 
 // Return client public credentials to send to server
 // Send <I, A> to server
-func (c *Client) Creds() string {
-    s := fmt.Sprintf("%x:0x%x", c.i, c.A.Bytes())
-    return s
+func (c *Client) Credentials() string {
+    s0 := hex.EncodeToString(c.i)
+    s1 := hex.EncodeToString(c.A.Bytes())
+    return s0 + ":" + s1
 }
 
 // Validate the server public credentials and generate session key
@@ -306,16 +307,13 @@ func (c *Client) Generate(srv string) (auth string, err error) {
         return
     }
 
-    var s []byte
-
-    _, err  = fmt.Sscanf(v[0], "%x", &s)
-    B, ok1 := big.NewInt(0).SetString(v[1], 0)
-
+    s, err := hex.DecodeString(v[0])
     if err != nil {
         err = fmt.Errorf("Invalid server public key s=%s", v[0])
         return
     }
 
+    B, ok1 := big.NewInt(0).SetString(v[1], 16)
     if !ok1 {
         err = fmt.Errorf("Invalid server public key B=%s", v[1])
         return
@@ -351,7 +349,7 @@ func (c *Client) Generate(srv string) (auth string, err error) {
 
     c.M = _hmac(c.K, c.A.Bytes(), B.Bytes(), c.i, s, c.N.Bytes(), c.g.Bytes())
 
-    return fmt.Sprintf("%x", c.M), nil
+    return hex.EncodeToString(c.M), nil
 }
 
 
@@ -359,7 +357,7 @@ func (c *Client) Generate(srv string) (auth string, err error) {
 // i.e., we should compute the same hmac() on M that the server did.
 func (c *Client) ServerOk(proof string) error {
     h   := _hmac(c.K, c.M)
-    myh := fmt.Sprintf("%x", h)
+    myh := hex.EncodeToString(h)
 
     if ! streq(myh, proof) {
         return fmt.Errorf("Server failed to generate same password")
@@ -372,13 +370,6 @@ func (c *Client) ServerOk(proof string) error {
 // Return the raw key computed as part of the protocol
 func (c *Client) RawKey() []byte {
     return c.K
-}
-
-
-// Derive a session key from the raw key. THis is what all the users
-// of the API should call.
-func (c * Client) SessionKey() []byte {
-    return SessionKey(c.K, 32)
 }
 
 
@@ -415,17 +406,15 @@ func ServerBegin(creds string) (I []byte, A *big.Int, err error) {
         return
     }
 
-    A, ok := big.NewInt(0).SetString(v[1], 0)
+    //fmt.Printf("v0: %s\nv1: %s\n", v[0], v[1])
+
+    A, ok := big.NewInt(0).SetString(v[1], 16)
     if !ok {
         err = fmt.Errorf("Invalid client public key A")
         return
     }
 
-    _, err = fmt.Sscanf(v[0], "%x", &I)
-    if err != nil {
-        return
-    }
-
+    I, err = hex.DecodeString(v[0])
     return
 }
 
@@ -491,22 +480,24 @@ func (c *Server) init(I, s, v []byte, A *big.Int, bits int) (err error) {
 
 // Return the server credentials (s,B)  in a network portable format.
 func (c* Server) Credentials() string {
-    return fmt.Sprintf("%x:0x%x", c.s, c.B.Bytes())
+
+    s0 := hex.EncodeToString(c.s)
+    s1 := hex.EncodeToString(c.B.Bytes())
+    return s0 + ":" + s1
 }
 
 
 // Verify that the client has generated the same password as the
 // server and return proof that the server too has done the same.
 func (c* Server) ClientOk(m string) (proof string, err error) {
-    mym := fmt.Sprintf("%x", c.M)
-    if ! streq(mym, m) {
+    mym := hex.EncodeToString(c.M)
+    if !streq(mym, m) {
         err = fmt.Errorf("Client failed to generate same password")
         return
     }
 
     h := _hmac(c.K, c.M)
-    proof = fmt.Sprintf("%x", h)
-    return proof, nil
+    return hex.EncodeToString(h), nil
 }
 
 
@@ -515,11 +506,6 @@ func (c *Server) RawKey() []byte {
     return c.K
 }
 
-// Return a session key based on authenticated key.
-// This is the method all users of the API should use.
-func (c * Server) SessionKey() []byte {
-    return SessionKey(c.K, 32)
-}
 
 
 // Stringify the server parameters
@@ -529,22 +515,10 @@ func (c *Server) String() string {
 }
 
 
-// Generate a session key from the raw key
-// XXX Use scrypt in the future
-func SessionKey(rawkey []byte, keylen int) []byte {
-    if 0 == keylen {
-        keylen = 32
-    }
-
-    // XXX This number should be parametrized somehow to account for
-    //     CPU and memory speed growth.
-    r  := MR.Int31n(5000)
-    sc := randbytes(keylen)
-    return Pbkdf2(rawkey, sc, int(r), mac, keylen)
-}
-
 
 // Constant time string compare
+// XXX We don't use subtle.ConstantTimeByteEq() because it operates
+//     on bytes not strings.
 func streq(a, b string) bool {
     m := len(a)
     n := len(b)

@@ -1,0 +1,113 @@
+#! /usr/bin/env bash
+
+# Wrapper to set appropriate environment vars before building go
+# programs.
+#
+# In particular this script uses the experimental vendor branch
+# support.
+#
+# (c) 2016 Sudhi Herle <sudhi-at-herle-net>
+# License: GPLv2
+#
+# Usage: $0 [--help] [os-arch]
+#
+
+Z=$0
+
+pwd=`pwd`
+export GO15VENDOREXPERIMENT=1
+export GOPATH=$pwd/vendor:$pwd
+
+
+die() {
+    echo "$Z: $@" 1>&2
+    exit 1
+}
+
+goos() {
+    local o=`echo $1| tr '[A-Z]' '[a-z]'`
+
+    case $o in 
+        linux|darwin|freebsd|openbsd|netbsd)
+            ;;
+
+        dragonfly|dragonflybsd|dfly|dflybsd)
+            o=dragonfly
+            ;;
+        *)
+            die "Don't know anything about OS $o"
+            ;;
+    esac
+    echo $o
+}
+
+
+goarch() {
+    local a=`echo $1 | tr '[A-Z]' '[a-z]'`
+
+    case "x$a" in
+        x[i]386|x386) a=386
+                ;;
+
+        x|xamd64) a=amd64
+                ;;
+
+        xarm|xarm64) a=arm64
+            ;;
+
+        *) die "Don't know anything about arch $a"
+            ;;
+    esac
+
+    echo $a
+}
+
+
+usage() {
+    cat <<EOF
+$0 - (cross) build go programs with vendor branch support.
+
+Usage: $0 [--help] [OS-ARCH] go args..
+
+OS can be one of:   linux, darwin, freebsd, openbsd, dragonflybsd
+ARCH can be one of: i386, amd64, arm, arm64
+EOF
+
+    exit 0
+}
+
+
+#set -x
+
+host=`uname|tr '[A-Z]' '[a-z]'`
+targ="$1"
+if [ "x$targ" != "xgo" ]; then
+    # we treat this as a potential OS/arch combo.
+    shift
+
+    case $targ in
+        --help|-h|help) usage
+                    ;;
+        *) ;;
+    esac
+
+    os=${targ%%-*}
+    arch=${targ##*-}
+    if [ "$os" = "$arch" ]; then
+        arch=
+    fi
+
+    os=`goos $os`       || exit 1
+    arch=`goarch $arch` || exit 1
+
+    if [ "$os" = "$host" ]; then
+        os=
+        arch=
+    else
+        export GOOS=$os
+        export GOARCH=$arch
+        echo "$0: Building for $os ($arch) .."
+    fi
+fi
+
+exec "$@"

@@ -8,7 +8,7 @@ package main
 import "fmt"
 import "crypto/subtle"
 
-import "./srp"
+import "srp"
 
 func main() {
     bits := 2048
@@ -31,7 +31,7 @@ func main() {
         panic(err)
     }
 
-    creds := c.Creds()
+    creds := c.Credentials()
     //fmt.Printf("Client->Server: %s\n\n", creds)
 
     // send: C->S: creds
