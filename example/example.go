@@ -8,7 +8,7 @@ package main
 import "fmt"
 import "crypto/subtle"
 
-import "srp"
+import "github.com/opencoff/go-srp/srp"
 
 func main() {
     bits := 2048

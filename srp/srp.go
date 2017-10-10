@@ -1,5 +1,5 @@
 //
-// Copyright 2013-2014 Sudhi Herle <sudhi.herle-at-gmail-dot-com>
+// Copyright 2013-2017 Sudhi Herle <sudhi.herle-at-gmail-dot-com>
 // License: MIT
 //
 // Implementation of SRP_.  It requires a cryptographically strong

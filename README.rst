@@ -116,20 +116,24 @@ and other bits.::
     rawkey := s.RawKey()
 
 
-Building the Test Program
--------------------------
-Use the provided shell script ``gob``::
+Building SRP
+------------
+Example program::
 
-    ./gob go build t_srp.go
+    $ mkdir srp-example && cd srp-example
+    $ GOPATH=$PWD go build github.com/opencoff/go-srp/example
 
+Using the library in your program::
+
+    $ go get github.com/opencoff/go-srp
+
+And in your program - as the following import path::
+
+    import "github.com/opencoff/go-srp/srp"
 
 
 Other Notes
 -----------
-
-* I wrote ``gob`` to make my life easier with cross-compiling go
-  programs (beginning go 1.5). It comes with a useful help message
-  ``./gob --help``.
 
 * The client and server both derive the same value for `RawKey()`. This is
   the crux of the SRP protocol. Treat this as a "master key".
@@ -143,7 +147,6 @@ Other Notes
 
 * KDF above can be a reputable key derivation function such as PBKDF2 or
   Scrypt.  The "counter" is incremented every time you derive a new key. 
-
 
 * *I am not a cryptographer*. Please consult your favorite crypto book for
   deriving encryption keys from a master key. Here is a example KDF
