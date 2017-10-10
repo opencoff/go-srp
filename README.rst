@@ -118,14 +118,24 @@ and other bits.::
 
 Building SRP
 ------------
-Example program::
+There is an example program that shows you the API usage (documented
+above).::
 
     $ mkdir srp-example && cd srp-example
+    $ GOPATH=$PWD go get   github.com/opencoff/go-srp/srp
+    $ GOPATH=$PWD go test  github.com/opencoff/go-srp/srp
+
+Finally, build the example program::
+
     $ GOPATH=$PWD go build github.com/opencoff/go-srp/example
+    $ ./example
+
+The example program outputs the raw-key from the client & server's
+perspective (they should be identical).
 
 Using the library in your program::
 
-    $ go get github.com/opencoff/go-srp
+    $ go get github.com/opencoff/go-srp/srp
 
 And in your program - as the following import path::
 
