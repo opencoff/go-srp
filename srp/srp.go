@@ -83,6 +83,7 @@ package srp
 import (
 	"crypto"
 	"crypto/hmac"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -341,7 +342,7 @@ func (c *Client) ServerOk(proof string) error {
 	h := _hmac(c.K, c.M)
 	myh := hex.EncodeToString(h)
 
-	if !streq(myh, proof) {
+	if subtle.ConstantTimeCompare([]byte(myh), []byte(proof)) != 1 {
 		return fmt.Errorf("Server failed to generate same password")
 	}
 
@@ -462,7 +463,8 @@ func (c *Server) Credentials() string {
 // server and return proof that the server too has done the same.
 func (c *Server) ClientOk(m string) (proof string, err error) {
 	mym := hex.EncodeToString(c.M)
-	if !streq(mym, m) {
+
+	if subtle.ConstantTimeCompare([]byte(mym), []byte(m)) != 1 {
 		err = fmt.Errorf("Client failed to generate same password")
 		return
 	}
@@ -480,25 +482,6 @@ func (c *Server) RawKey() []byte {
 func (c *Server) String() string {
 	return fmt.Sprintf("<server> g=%d, N=%x\n I=%x\n s=%x\n B=%x\n K=%x\n",
 		c.g, c.N, c.i, c.s, c.B, c.K)
-}
-
-// Constant time string compare
-// XXX We don't use subtle.ConstantTimeByteEq() because it operates
-//     on bytes not strings.
-func streq(a, b string) bool {
-	m := len(a)
-	n := len(b)
-
-	if m != n {
-		return false
-	}
-
-	var v uint8
-	for i := 0; i < m; i++ {
-		v |= a[i] ^ b[i]
-	}
-
-	return v == 0
 }
 
 // - EOF -
