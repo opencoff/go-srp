@@ -336,7 +336,7 @@ func (c *Client) Generate(srv string) (auth string, err error) {
 	return hex.EncodeToString(c.M), nil
 }
 
-// ServerOk takes a 'proof' offered by the server and verify that it is valid.
+// ServerOk takes a 'proof' offered by the server and verifies that it is valid.
 // i.e., we should compute the same hmac() on M that the server did.
 func (c *Client) ServerOk(proof string) error {
 	h := _hmac(c.K, c.M)
