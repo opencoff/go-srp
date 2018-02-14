@@ -206,7 +206,7 @@ func randlong(bits int) *big.Int {
 	return r
 }
 
-// Verifier generates a password veririer for user I and passphrase p
+// Verifier generates a password verifier for user I and passphrase p
 // Return tuple containing hashed identity, salt, verifier. Caller
 // is expected to store the tuple in some persistent DB
 func Verifier(I, p []byte, bits int) (Ih, salt, v []byte, err error) {
