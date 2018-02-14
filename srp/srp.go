@@ -206,7 +206,7 @@ func randlong(bits int) *big.Int {
 	return r
 }
 
-// Generate a password veririer for user I and passphrase p
+// Verifier generates a password veririer for user I and passphrase p
 // Return tuple containing hashed identity, salt, verifier. Caller
 // is expected to store the tuple in some persistent DB
 func Verifier(I, p []byte, bits int) (Ih, salt, v []byte, err error) {
@@ -229,7 +229,7 @@ func Verifier(I, p []byte, bits int) (Ih, salt, v []byte, err error) {
 	return
 }
 
-// Represents an SRP Client instance
+// Client represents an SRP client instance
 type Client struct {
 	g *big.Int
 	N *big.Int
@@ -243,7 +243,7 @@ type Client struct {
 	M []byte
 }
 
-// Client SRP class constructor
+// NewClient constructs an SRP client instance
 func NewClient(I, p []byte, bits int) (c *Client, err error) {
 	c = new(Client)
 	err = c.init(I, p, bits)
@@ -274,7 +274,7 @@ func (c *Client) init(I, p []byte, bits int) (err error) {
 	return nil
 }
 
-// Return client public credentials to send to server
+// Credentials returns client public credentials to send to server
 // Send <I, A> to server
 func (c *Client) Credentials() string {
 	s0 := hex.EncodeToString(c.i)
@@ -282,7 +282,7 @@ func (c *Client) Credentials() string {
 	return s0 + ":" + s1
 }
 
-// Validate the server public credentials and generate session key
+// Generate validates the server public credentials and generate session key
 // Return the mutual authenticator
 // - Get <s, B> from server
 // - calculate S from a, s, B
@@ -336,7 +336,7 @@ func (c *Client) Generate(srv string) (auth string, err error) {
 	return hex.EncodeToString(c.M), nil
 }
 
-// Take a 'proof' offered by the server and verify that it is valid.
+// ServerOk takes a 'proof' offered by the server and verify that it is valid.
 // i.e., we should compute the same hmac() on M that the server did.
 func (c *Client) ServerOk(proof string) error {
 	h := _hmac(c.K, c.M)
@@ -349,18 +349,18 @@ func (c *Client) ServerOk(proof string) error {
 	return nil
 }
 
-// Return the raw key computed as part of the protocol
+// RawKey returns the raw key computed as part of the protocol
 func (c *Client) RawKey() []byte {
 	return c.K
 }
 
-// Stringfy
+// String represents the client parameters as a string value
 func (c *Client) String() string {
 	return fmt.Sprintf("<client> g=%d, N=%x\n I=%x\n A=%x\n K=%x\n",
 		c.g, c.N, c.i, c.A, c.K)
 }
 
-// Represents an SRP Server instance
+// Server represents an SRP server instance
 type Server struct {
 	g *big.Int
 	N *big.Int
@@ -373,7 +373,7 @@ type Server struct {
 	M []byte
 }
 
-// Begin the server processing by parsing the credentials sent by
+// ServerBegin begins the server processing by parsing the credentials sent by
 // the client.
 // The caller is expected to use 'I' to lookup some database and
 // find the verifier, salt and other user specific parameters.
@@ -396,7 +396,7 @@ func ServerBegin(creds string) (I []byte, A *big.Int, err error) {
 	return
 }
 
-// Constructor for the server type
+// NewServer constructs a Server instance
 func NewServer(I, s, v []byte, A *big.Int, bits int) (c *Server, err error) {
 	c = new(Server)
 	err = c.init(I, s, v, A, bits)
@@ -451,7 +451,8 @@ func (c *Server) init(I, s, v []byte, A *big.Int, bits int) (err error) {
 	return nil
 }
 
-// Return the server credentials (s,B)  in a network portable format.
+// Credentials returns the server credentials (s,B) in a network portable
+// format.
 func (c *Server) Credentials() string {
 
 	s0 := hex.EncodeToString(c.s)
@@ -459,7 +460,7 @@ func (c *Server) Credentials() string {
 	return s0 + ":" + s1
 }
 
-// Verify that the client has generated the same password as the
+// ClientOk verifies that the client has generated the same password as the
 // server and return proof that the server too has done the same.
 func (c *Server) ClientOk(m string) (proof string, err error) {
 	mym := hex.EncodeToString(c.M)
@@ -473,12 +474,12 @@ func (c *Server) ClientOk(m string) (proof string, err error) {
 	return hex.EncodeToString(h), nil
 }
 
-// Return the raw key negotiated as part of the SRP
+// RawKey returns the raw key negotiated as part of the SRP
 func (c *Server) RawKey() []byte {
 	return c.K
 }
 
-// Stringify the server parameters
+// String represents the Server parameters as a string value
 func (c *Server) String() string {
 	return fmt.Sprintf("<server> g=%d, N=%x\n I=%x\n s=%x\n B=%x\n K=%x\n",
 		c.g, c.N, c.i, c.s, c.B, c.K)
