@@ -169,7 +169,7 @@ Other Notes
     const _r int = 1024
     const _p int = 64
         
-    // key derivation for use 'usage' to generate a 'sz' byte key.
+    // Kdf derives a 'sz' byte key for use 'usage'
     func Kdf(key []byte, salt []byte, usage string, sz int) []byte {
 
         u0 := []byte(usage)
@@ -177,5 +177,28 @@ Other Notes
         k, _ := scrypt.Key(pw, salt, _N, _r, _p, sz)
         return k
     }
+
+* Argon_ is the new state of the art (2018) key derivation algorithm.
+  The Argon2id variant is resistant to timing, side-channel and Time-memory
+  tradeoff attacks. Here is an example using the Argon2id variant::
+
+    import (
+        "runtime"
+        "golang.org/x/crypto/argon2"
+    )
+
+    // safe values for IDKey() borrowed from libsodium
+    const _Time uint32 = 3
+    const _Mem  uint32 = 256 * 1048576  // 256 MB
+
+    // Kdf derives a 'sz' byte key for use 'usage'
+    func Kdf(key, salt []byte, usage string, sz int) []byte {
+        u0 := []byte(usage)
+        pw := append(key, u0...)
+
+        return argon2.IDKey(pw, salt, _Time, _Mem, runtime.NumCPU(), uint32(sz))
+    }
+
+.. _Argon: https://tools.ietf.org/html/draft-irtf-cfrg-argon2-03
 
 .. vim: ft=rst:sw=4:ts=4:tw=72:
