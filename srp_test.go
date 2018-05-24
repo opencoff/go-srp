@@ -73,8 +73,7 @@ func (db *userdb) lookup(ih string) (bool, string) {
 func (db *userdb) verify(t *testing.T, user, pass []byte, goodPw bool) {
 	assert := newAsserter(t)
 
-
-	s := db.s   // SRP Instance
+	s := db.s // SRP Instance
 
 	// Start an SRP Client instance
 	c, err := s.NewClient(user, pass)
@@ -102,13 +101,12 @@ func (db *userdb) verify(t *testing.T, user, pass []byte, goodPw bool) {
 	assert(err == nil, "NewServer: %s", err)
 
 	// Send the salt and Server public Key to client
-	s_creds := srv.Credentials()
+	sCreds := srv.Credentials()
 
-	// Server  --> sends 's_creds' to client
-
+	// Server  --> sends 'sCreds' to client
 
 	// Client generates a mutual auth and sends to server
-	mauth, err := c.Generate(s_creds)
+	mauth, err := c.Generate(sCreds)
 	assert(err == nil, "Client.Generate: %s", err)
 
 	// Client --> sends 'mauth' to server
@@ -122,7 +120,6 @@ func (db *userdb) verify(t *testing.T, user, pass []byte, goodPw bool) {
 		assert(!ok, "server: validated bad password")
 		return
 	}
-
 
 	// Server  --> sends 'proof' to client
 
@@ -145,7 +142,6 @@ func TestSRP(t *testing.T) {
 	var goodpass []byte = []byte("secretpassword")
 	var badpass []byte = []byte("badpassword")
 
-
 	bits := []int{1024, 2048, 3072, 4096, 6144, 8192}
 
 	for _, p := range bits {
@@ -157,8 +153,6 @@ func TestSRP(t *testing.T) {
 		db.verify(t, user, badpass, false)
 	}
 }
-
-
 
 func mustDecode(s string) []byte {
 	n := len(s)
@@ -174,7 +168,7 @@ func mustDecode(s string) []byte {
 			x = c - 'a' + 10
 		case 'A' <= c && c <= 'F':
 			x = c - 'A' + 10
-		case  c == ' ' || c == '\n' || c == '\t':
+		case c == ' ' || c == '\n' || c == '\t':
 			continue
 		default:
 			panic(fmt.Sprintf("invalid hex char %c in %s", c, s))

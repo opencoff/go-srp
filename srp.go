@@ -10,8 +10,48 @@
 // This implementation is accurate as of Aug 2012 edition of the SRP
 // specification [1].
 //
-// Conventions
+// To verify that the client has generated the same key "K", the client sends
+// "M" -- a hash of all the data it has and it received from the server. To
+// validate that the server also has the same value, it requires the server to send
+// its own proof. In the SRP paper [1], the authors use:
+//     M = H(H(N) xor H(g), H(I), s, A, B, K)
+//     M' = H(A, M, K)
+//
+// We use a simpler construction:
+//     M = H(K, A, B, I, s, N, g)
+//     M' = H(M, K)
+//
+// The two parties also employ the following safeguards:
+//
+//  1. The user will abort if he receives B == 0 (mod N) or u == 0.
+//  2. The host will abort if it detects that A == 0 (mod N).
+//  3. The user must show his proof of K first. If the server detects that the
+//     user's proof is incorrect, it must abort without showing its own proof of K.
+//
+// In this implementation:
+//
+//     H  = BLAKE2()
+//     k  = H(N, g)
+//     x  = H(s, I, P)
+//     I  = anonymized form of user identity (BLAKE2 of value sent by client)
+//     P  = hashed password (expands short passwords)
+//
+//
+// Per RFC-5054, we adopt the following padding convention:
+//
+//    k = H(N, pad(g))
+//    u = H(pad(A), pad(B))
+//
+// References:
 // -----------
+// [1] http://srp.stanford.edu/design.html
+// [2] http://srp.stanford.edu/
+package srp
+
+// Implementation Notes
+// ---------------------
+//
+// Conventions
 //   N    A large safe prime (N = 2q+1, where q is prime)
 //        All arithmetic is done modulo N.
 //   g    A generator modulo N
@@ -97,21 +137,17 @@
 //     x  = H(s, I, P)
 //     I  = anonymized form of user identity (BLAKE2 of value sent by client)
 //     P  = hashed password (expands short passwords)
-//     
+//
 //
 // Per RFC-5054, we adopt the following padding convention:
 //    k = H(N, pad(g))
 //    u = H(pad(A), pad(B))
 //
-// References:
-// -----------
-// [1] http://srp.stanford.edu/design.html
-// [2] http://srp.stanford.edu/
-//
-package srp
+
 import (
 	"bytes"
 	"crypto"
+	CR "crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
@@ -119,27 +155,27 @@ import (
 	"math/big"
 	"strconv"
 	"strings"
-	CR "crypto/rand"
 
+	// stdlib has an enum for Blake2b_256; this lib registers itself against it.
 	_ "golang.org/x/crypto/blake2b"
 )
 
-
+// SRP parametrizes the hash function and prime-field size used by its
+// clients and servers. The default hash function is Blake2b-256. Any valid hash
+// function as documented in "crypto" can be used.
 type SRP struct {
-	h   crypto.Hash
-	pf  *primeField
+	h  crypto.Hash
+	pf *primeField
 }
-
 
 // FieldSize returns this instance's prime-field size in bits
 func (s *SRP) FieldSize() int {
 	return s.pf.n * 8
 }
 
-
 // New creates a new SRP environment using a 'bits' sized prime-field for
 // use by SRP clients and Servers.The default hash function is Blake-2b-256.
-func New(bits int)  (*SRP, error) {
+func New(bits int) (*SRP, error) {
 	return NewWithHash(crypto.BLAKE2b_256, bits)
 }
 
@@ -152,8 +188,8 @@ func NewWithHash(h crypto.Hash, bits int) (*SRP, error) {
 	}
 
 	s := &SRP{
-		h:    h,
-		pf:   pf,
+		h:  h,
+		pf: pf,
 	}
 	return s, nil
 }
@@ -178,16 +214,14 @@ func ServerBegin(creds string) (string, *big.Int, error) {
 	return v[0], A, nil
 }
 
-
 // Verifier represents password verifier that resides on an SRP server.
 type Verifier struct {
-	i  []byte   // hashed identity
-	s  []byte   // random salt (same size as prime field)
-	v  []byte   // password verifier
+	i  []byte      // hashed identity
+	s  []byte      // random salt (same size as prime field)
+	v  []byte      // password verifier
 	h  crypto.Hash // hash algo used for building v
-	sz int	    // prime field size
+	sz int         // prime field size
 }
-
 
 // Verifier generates a password verifier for user I and passphrase p
 // Return tuple containing hashed identity, salt, verifier. Caller
@@ -211,9 +245,8 @@ func (s *SRP) Verifier(I, p []byte) (*Verifier, error) {
 	return v, nil
 }
 
-
 // MakeVerifier decodes the encoded verifier into an SRP and Verifier
-// instance. The caller uses the SRP client provided identity to lookup a DB 
+// instance. The caller uses the SRP client provided identity to lookup a DB
 // and find the encoded verifier 'b'; this encoded data contains enough
 // information to create a valid SRP instance and Verifier instance.
 func MakeSRPVerifier(b string) (*SRP, *Verifier, error) {
@@ -221,7 +254,7 @@ func MakeSRPVerifier(b string) (*SRP, *Verifier, error) {
 	if len(v) != 5 {
 		return nil, nil, fmt.Errorf("verifier: malformed fields exp 5, saw %d", len(v))
 	}
-	
+
 	sz, err := strconv.Atoi(v[0])
 	if err != nil || sz <= 0 {
 		return nil, nil, fmt.Errorf("verifier: malformed field size %s", v[0])
@@ -268,7 +301,7 @@ func MakeSRPVerifier(b string) (*SRP, *Verifier, error) {
 		pf: pf,
 	}
 
-	return  sr, vf, nil
+	return sr, vf, nil
 }
 
 // Encode the verifier into a portable format - returns a tuple
@@ -321,7 +354,6 @@ func (s *SRP) NewClient(I, p []byte) (*Client, error) {
 	//fmt.Printf("Client %d:\n\tA=%x\n\tk=%x", bits, c.xA, c.k)
 	return c, nil
 }
-
 
 // Credentials returns client public credentials to send to server
 // Send <I, A> to server
@@ -406,13 +438,13 @@ func (c *Client) String() string {
 
 // Server represents an SRP server instance
 type Server struct {
-	s     *SRP
-	i     []byte
-	salt  []byte
-	v     *big.Int
-	xB    *big.Int
-	xK    []byte
-	xM    []byte
+	s    *SRP
+	i    []byte
+	salt []byte
+	v    *big.Int
+	xB   *big.Int
+	xK   []byte
+	xM   []byte
 }
 
 // ServerBegin begins the server processing by parsing the credentials sent by
@@ -514,7 +546,6 @@ func (s *Server) String() string {
 		pf.g, pf.N, s.i, s.salt, s.xB, s.xK)
 }
 
-
 // hash byte stream and return as bytes
 func (s *SRP) hashbyte(a ...[]byte) []byte {
 	h := s.h.New()
@@ -523,7 +554,6 @@ func (s *SRP) hashbyte(a ...[]byte) []byte {
 	}
 	return h.Sum(nil)
 }
-
 
 // hash a number of byte strings and return the resulting hash as
 // bigint
@@ -566,7 +596,6 @@ func pad(x *big.Int, n int) []byte {
 	return b
 }
 
-
 // Return n bytes of random  bytes. Uses cryptographically strong
 // random generator
 func randbytes(n int) []byte {
@@ -589,12 +618,11 @@ func randBigInt(bits int) *big.Int {
 	return r
 }
 
-
 // build the database of prime fields and generators
 func init() {
 
 	pflist = make(map[int]*primeField)
-	lines := strings.Split(pflist_str, "\n")
+	lines := strings.Split(pflistStr, "\n")
 	for _, s := range lines {
 		v := strings.Split(s, ":")
 		b := atoi(v[0])
@@ -612,7 +640,7 @@ func init() {
 }
 
 // Map of bits to <g, N> tuple
-const pflist_str = `1024:2:0xEEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE48E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B297BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9AFD5138FE8376435B9FC61D2FC0EB06E3
+const pflistStr = `1024:2:0xEEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA2314C9C256576D674DF7496EA81D3383B4813D692C6E0E0D5D8E250B98BE48E495C1D6089DAD15DC7D7B46154D6B6CE8EF4AD69B15D4982559B297BCF1885C529F566660E57EC68EDBC3C05726CC02FD4CBF4976EAA9AFD5138FE8376435B9FC61D2FC0EB06E3
 1536:2:0x9DEF3CAFB939277AB1F12A8617A47BBBDBA51DF499AC4C80BEEEA9614B19CC4D5F4F5F556E27CBDE51C6A94BE4607A291558903BA0D0F84380B655BB9A22E8DCDF028A7CEC67F0D08134B1C8B97989149B609E0BE3BAB63D47548381DBC5B1FC764E3F4B53DD9DA1158BFD3E2B9C8CF56EDF019539349627DB2FD53D24B7C48665772E437D6C7F8CE442734AF7CCB7AE837C264AE3A9BEB87F8A2FE9B8B5292E5A021FFF5E91479E8CE7A28C2442C6F315180F93499A234DCF76E3FED135F9BB
 2048:2:0xAC6BDB41324A9A9BF166DE5E1389582FAF72B6651987EE07FC3192943DB56050A37329CBB4A099ED8193E0757767A13DD52312AB4B03310DCD7F48A9DA04FD50E8083969EDB767B0CF6095179A163AB3661A05FBD5FAAAE82918A9962F0B93B855F97993EC975EEAA80D740ADBF4FF747359D041D5C33EA71D281E446B14773BCA97B43A23FB801676BD207A436C6481F1D2B9078717461A5B9D32E688F87748544523B524B0D57D5EA77A2775D2ECFA032CFBDBF52FB3786160279004E57AE6AF874E7303CE53299CCC041C7BC308D82A5698F3A8D0C38271AE35F8E9DBFBB694B5C803D89F7AE435DE236D525F54759B65E372FCD68EF20FA7111F9E4AFF73
 3072:2:0xFFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA63B139B22514A08798E3404DDEF9519B3CD3A431B302B0A6DF25F14374FE1356D6D51C245E485B576625E7EC6F44C42E9A637ED6B0BFF5CB6F406B7EDEE386BFB5A899FA5AE9F24117C4B1FE649286651ECE45B3DC2007CB8A163BF0598DA48361C55D39A69163FA8FD24CF5F83655D23DCA3AD961C62F356208552BB9ED529077096966D670C354E4ABC9804F1746C08CA18217C32905E462E36CE3BE39E772C180E86039B2783A2EC07A28FB5C55DF06F4C52C9DE2BCBF6955817183995497CEA956AE515D2261898FA051015728E5A8AAAC42DAD33170D04507A33A85521ABDF1CBA64ECFB850458DBEF0A8AEA71575D060C7DB3970F85A6E1E4C7ABF5AE8CDB0933D71E8C94E04A25619DCEE3D2261AD2EE6BF12FFA06D98A0864D87602733EC86A64521F2B18177B200CBBE117577A615D6C770988C0BAD946E208E24FA074E5AB3143DB5BFCE0FD108E4B82D120A93AD2CAFFFFFFFFFFFFFFFF
@@ -623,11 +651,10 @@ const pflist_str = `1024:2:0xEEAF0AB9ADB38DD69C33F80AFA8FC5E86072618775FF3C0B9EA
 type primeField struct {
 	g *big.Int
 	N *big.Int
-	n  int	// size of N in bytes
+	n int // size of N in bytes
 }
 
 // prime field list - mapped by bit size; initialized via init() above.
 var pflist map[int]*primeField
-
 
 // vim: noexpandtab:sw=8:ts=8:tw=92:

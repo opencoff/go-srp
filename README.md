@@ -10,7 +10,108 @@ can be used by SRP clients or servers.
 SRP is a protocol to authenticate a user and derive safe session keys.
 It is the latest in the category of \"strong authentication protocols\".
 
-SRP is documented here: <http://srp.stanford.edu/doc.html>
+SRP is documented here: <http://srp.stanford.edu/doc.html>. Briefly,
+
+### Conventions
+
+    N    A large safe prime (N = 2q+1, where q is prime)
+       All arithmetic is done modulo N.
+    g    A generator modulo N
+    k    Multiplier parameter (k = H(N, g) in SRP-6a, k = 3 for legacy SRP-6)
+    s    User's salt
+    I    Username
+    p    Cleartext Password
+    H()  One-way hash function
+    ^    (Modular) Exponentiation
+    u    Random scrambling parameter
+    a,b  Secret ephemeral values
+    A,B  Public ephemeral values
+    x    Private key (derived from p and s)
+    v    Password verifier
+
+The host stores passwords using the following formula:
+
+    s = randomsalt()          (same length as N)
+    I = H(I)
+    p = H(p)                  (hash/expand I & p)
+    t = H(I, ":", p)
+    x = H(s, t)
+    v = g^x                   (computes password verifier)
+
+The host then keeps {I, s, v} in its password database.
+
+The authentication protocol itself goes as follows:
+
+    Client                       Server
+    --------------               ----------------
+    un, pw = < user input >
+    I = H(un)
+    p = H(pw)
+    a = random()
+    A = g^a % N
+                I, A -->
+                              s, v = lookup(I)
+                              b = random()
+                              B = (kv + g^b) % N
+                              u = H(A, B)
+                              S = ((A * v^u) ^ b) % N
+                              K = H(S)
+                              M' = H(K, A, B, I, s, N, g)
+                 <-- s, B
+    u = H(A, B)
+    x = H(s, p)
+    S = ((B - k (g^x)) ^ (a + ux)) % N
+    K = H(S)
+    M = H(K, A, B, I, s, N, g)
+
+                M -->
+                              M must be equal to M'
+                              Z = H(M, K)
+                <-- Z
+
+    Z' = H(M, K)
+    Z' must equal Z
+
+When the server receives `<I, A>`, it can compute everything: shared key
+and proof-of-generation `M'`. The shared key is `K`.
+
+To verify that the client has generated the same key `K`, the client sends
+`M` -- a hash of all the data it has and it received from the server. To
+validate that the server also has the same value, it requires the server to send
+its own proof. In the SRP paper, the authors use:
+
+    M = H(H(N) xor H(g), H(I), s, A, B, K)
+    M' = H(A, M, K)
+
+We use a simpler construction:
+
+    M = H(K, A, B, I, s, N, g)
+    M' = H(M, K)
+
+The two parties also employ the following safeguards:
+
+ 1. The user will abort if he receives `B == 0 (mod N) or u == 0`.
+ 2. The host will abort if it detects that `A == 0 (mod N)`.
+ 3. The user must show his proof of K first. If the server detects that the
+    user\'s proof is incorrect, it must abort without showing its own proof of K.
+
+In our implementation:
+
+- The standard hash function is Blake2b-256; this can be changed by choosing an
+  appropriate hash from `crypto`:
+  ```go
+
+       s, err := srp.NewWithHash(crypto.SHA256, 4096)
+  ```
+
+- We pad `g`, `A`, `B` with leading zeroes to make them same sized as the
+  prime-field (as in RFC 5054). See below.
+- `H = Blake2b_256()`
+- `k = H(N, pad(g))`
+- `I = H(username)`
+- `p = H(password)`
+- `x = H(salt, I, p)`
+- `u = H(pad(A), pad(B)`
 
 ## Setting up the Verifiers on the Server
 In order to authenticate and derive session keys, verifiers must be
