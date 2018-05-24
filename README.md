@@ -1,4 +1,8 @@
 # Standalone SRP-6a implementation in go-lang
+
+[![GoDoc](https://godoc.org/github.com/opencoff/go-srp?status.svg)](https://godoc.org/github.com/opencoff/go-srp) 
+[![Go Report
+Card](https://goreportcard.com/badge/github.com/opencoff/go-srp)](https://goreportcard.com/report/github.com/opencoff/go-srp) 
 This is a standalone implementation of SRP in golang. It uses the go
 standard libraries and has no other external dependencies. This library
 can be used by SRP clients or servers.
