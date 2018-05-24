@@ -32,79 +32,109 @@ func newAsserter(t *testing.T) func(cond bool, msg string, args ...interface{}) 
 }
 
 type user struct {
-	userhash       []byte
-	salt, verifier []byte
-	p      int
+	v *Verifier
 }
 
 type userdb struct {
-	p int
-	u []*user
+	s *SRP
+	u map[string]string
 }
 
-func newUserDB(uname, pass []byte, p int) (*userdb, error) {
+func newUserDB(user, pass []byte, p int) (*userdb, error) {
 
-	uh, s, v, err := Verifier(uname, pass, p)
+	s, err := New(p)
 	if err != nil {
 		return nil, err
 	}
 
-	u := &user{userhash: uh, salt: s, verifier: v, p: p}
-	db := &userdb{p: p}
+	v, err := s.Verifier(user, pass)
+	if err != nil {
+		return nil, err
+	}
 
-	db.u = append(db.u, u)
+	ih, vh := v.Encode()
+
+	db := &userdb{
+		s: s,
+		u: make(map[string]string),
+	}
+
+	db.u[ih] = vh
 
 	return db, nil
 }
 
 // simulated user lookup
-func (db *userdb) lookup(uhash []byte) (bool, *user) {
-	u := db.u[0]
-	return true, u
+func (db *userdb) lookup(ih string) (bool, string) {
+	u, ok := db.u[ih]
+	return ok, u
 }
 
 func (db *userdb) verify(t *testing.T, user, pass []byte, goodPw bool) {
 	assert := newAsserter(t)
 
-	// setup client session
-	c, err := NewClient(user, pass, db.p)
-	assert(err == nil, "expected err to be nil; saw %s", err)
 
+	s := db.s   // SRP Instance
+
+	// Start an SRP Client instance
+	c, err := s.NewClient(user, pass)
+	assert(err == nil, "NewClient: %s", err)
+
+	// Credentials to send to server
 	creds := c.Credentials() // this is what we send to server
 
-	ii, aa, err := ServerBegin(creds)
-	assert(err == nil, "expected err to be nil; saw %s", err)
+	// client --> sends 'creds' to server
 
-	// Begin a new server session by looking up DB using 'ii' as the
-	// key; fetch verifier (v), salt from the DB.
-	ok, u := db.lookup(ii)
+	// In actuality, this is done on the server.
+	ih, A, err := ServerBegin(creds)
+	assert(err == nil, "ServerBegin: %s", err)
+
+	// Using identity 'ih', lookup the user-db and fetch the encoded verifier.
+	ok, vs := db.lookup(ih)
 	assert(ok, "can't find user in db")
 
-	s, err := NewServer(ii, u.salt, u.verifier, aa, u.p)
-	assert(err == nil, "expected err to be nil; saw %s", err)
+	// On the server, we create the SRP instance afresh from the verifier.
+	s, v, err := MakeSRPVerifier(vs)
+	assert(err == nil, "SRPVerifier: %s", err)
 
-	screds := s.Credentials() // send this to client.
+	// create a SRP server instance using the verifier and public key
+	srv, err := s.NewServer(v, A)
+	assert(err == nil, "NewServer: %s", err)
 
-	mauth, err := c.Generate(screds) // send the mutual authenticator to server
-	assert(err == nil, "expected err to be nil; saw %s", err)
+	// Send the salt and Server public Key to client
+	s_creds := srv.Credentials()
 
-	proof, err := s.ClientOk(mauth) // confirm mutual authenticator and send proof of legit auth
+	// Server  --> sends 's_creds' to client
+
+
+	// Client generates a mutual auth and sends to server
+	mauth, err := c.Generate(s_creds)
+	assert(err == nil, "Client.Generate: %s", err)
+
+	// Client --> sends 'mauth' to server
+
+	// Server validates the mutual authenticator and creates its proof of having derived
+	// the same key. This proof is sent to the client.
+	proof, ok := srv.ClientOk(mauth)
 	if goodPw {
-		assert(err == nil, "server: bad client auth (%s)", err)
+		assert(ok, "server: bad client proof")
 	} else {
-		assert(err != nil, "server: expected client to fail")
+		assert(!ok, "server: validated bad password")
 		return
 	}
 
+
+	// Server  --> sends 'proof' to client
+
 	// finally, the client should verify the server's proof
-	err = c.ServerOk(proof)
-	assert(err == nil, "client: bad server (%s)", err)
+	ok = c.ServerOk(proof)
+	assert(ok, "client: bad client proof")
 
 	// both client and server are authenticated. Now, we generate a
 	// mutual secret -- which should be identical
 
 	kc := c.RawKey()
-	ks := s.RawKey()
+	ks := srv.RawKey()
 
 	assert(1 == subtle.ConstantTimeCompare(kc, ks), "key mismatch;\nclient %x, server %x", kc, ks)
 }
