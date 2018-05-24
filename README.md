@@ -22,14 +22,13 @@ attacks.
 
 Depending on the resources available on a given client, it can choose a
 small or large prime-field; but once chosen it is recorded on the server
-- until a new verifier is generated.
+until a new verifier is generated.
 
 ```go
 
     s, err := srp.New(n_bits)
 
     v, err := s.Verifier(username, password)
-
     id, verif := v.Encode()
 
     // Now, store 'id', 'verif' in non-volatile storage such that 'verif' can be
@@ -47,7 +46,6 @@ derive session keys:
     s, err := srp.New(n_bits)
 
     c, err := s.NewClient(user, pass)
-
     creds := c.Credentials()
 
     // 1. send the credentials to the server. It is already in ASCII string form; this
@@ -61,9 +59,6 @@ derive session keys:
 
     // Now, generate a mutual authenticator to be sent to the server
     auth, err := c.Generate(server_creds)
-    if err != nil {
-        panic(err)
-    }
 
     // 3. Send the mutual authenticator to the server
     // 4. receive "proof" that the server too computed the same result.
