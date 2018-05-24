@@ -105,13 +105,16 @@ In our implementation:
   ```
 
 - We pad `g`, `A`, `B` with leading zeroes to make them same sized as the
-  prime-field (as in RFC 5054). See below.
-- `H = Blake2b_256()`
-- `k = H(N, pad(g))`
-- `I = H(username)`
-- `p = H(password)`
-- `x = H(salt, I, p)`
-- `u = H(pad(A), pad(B)`
+  prime-field (as in RFC 5054). See below:
+
+  ```
+       H = Blake2b_256()
+       k = H(N, pad(g))
+       I = H(username)
+       p = H(password)
+       x = H(salt, I, p)
+       u = H(pad(A), pad(B)
+  ```
 
 ## Setting up the Verifiers on the Server
 In order to authenticate and derive session keys, verifiers must be
@@ -129,6 +132,8 @@ Depending on the resources available on a given client, it can choose a
 small or large prime-field; but once chosen it is recorded on the server
 until a new verifier is generated.
 
+For example, a client will do:
+
 ```go
 
     s, err := srp.New(n_bits)
@@ -141,6 +146,16 @@ until a new verifier is generated.
 ```
 
 Note that `id` is the hashed identity string for username.
+
+A client may wish to change the default hash function to something else. e.g.,::
+
+```go
+
+    s, err := srp.NewWithHash(crypto.SHA256, n_bits)
+
+    v, err := s.Verifier(username, password)
+    id, verif := v.Encode()
+```
 
 ## Authentication attempt from the Client
 The client performs the following sequence of steps to authenticate and

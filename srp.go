@@ -21,12 +21,6 @@
 //     M = H(K, A, B, I, s, N, g)
 //     M' = H(M, K)
 //
-// The two parties also employ the following safeguards:
-//
-//  1. The user will abort if he receives B == 0 (mod N) or u == 0.
-//  2. The host will abort if it detects that A == 0 (mod N).
-//  3. The user must show his proof of K first. If the server detects that the
-//     user's proof is incorrect, it must abort without showing its own proof of K.
 //
 // In this implementation:
 //
@@ -43,9 +37,8 @@
 //    u = H(pad(A), pad(B))
 //
 // References:
-// -----------
-// [1] http://srp.stanford.edu/design.html
-// [2] http://srp.stanford.edu/
+//  [1] http://srp.stanford.edu/design.html
+//  [2] http://srp.stanford.edu/
 package srp
 
 // Implementation Notes
@@ -115,34 +108,17 @@ package srp
 // To verify that the client has generated the same key "K", the client sends
 // "M" -- a hash of all the data it has and it received from the server. To
 // validate that the server also has the same value, it requires the server to send
-// its own proof. In the SRP paper [1], the authors use:
-//     M = H(H(N) xor H(g), H(I), s, A, B, K)
-//     M' = H(A, M, K)
+// its own proof. We use a simpler construction:
 //
-// We use a simpler construction:
 //     M = H(K, A, B, I, s, N, g)
 //     M' = H(M, K)
 //
-// The two parties also employ the following safeguards:
+// Client & Server also employ the following safeguards:
 //
 //  1. The user will abort if he receives B == 0 (mod N) or u == 0.
 //  2. The host will abort if it detects that A == 0 (mod N).
 //  3. The user must show his proof of K first. If the server detects that the
 //     user's proof is incorrect, it must abort without showing its own proof of K.
-//
-// In this implementation::
-//
-//     H  = BLAKE2()
-//     k  = H(N, g)
-//     x  = H(s, I, P)
-//     I  = anonymized form of user identity (BLAKE2 of value sent by client)
-//     P  = hashed password (expands short passwords)
-//
-//
-// Per RFC-5054, we adopt the following padding convention:
-//    k = H(N, pad(g))
-//    u = H(pad(A), pad(B))
-//
 
 import (
 	"bytes"
@@ -179,7 +155,7 @@ func New(bits int) (*SRP, error) {
 	return NewWithHash(crypto.BLAKE2b_256, bits)
 }
 
-// NewWitHash creates a new SRP environment using the hash function 'h' and
+// NewWithHash creates a new SRP environment using the hash function 'h' and
 // 'bits' sized prime-field size.
 func NewWithHash(h crypto.Hash, bits int) (*SRP, error) {
 	pf, ok := pflist[bits]
@@ -245,7 +221,7 @@ func (s *SRP) Verifier(I, p []byte) (*Verifier, error) {
 	return v, nil
 }
 
-// MakeVerifier decodes the encoded verifier into an SRP and Verifier
+// MakeSRPVerifier decodes the encoded verifier into an SRP and Verifier
 // instance. The caller uses the SRP client provided identity to lookup a DB
 // and find the encoded verifier 'b'; this encoded data contains enough
 // information to create a valid SRP instance and Verifier instance.
