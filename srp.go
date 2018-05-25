@@ -136,9 +136,11 @@ import (
 	_ "golang.org/x/crypto/blake2b"
 )
 
-// SRP parametrizes the hash function and prime-field size used by its
-// clients and servers. The default hash function is Blake2b-256. Any valid hash
-// function as documented in "crypto" can be used.
+// SRP represents an environment for the client and server to share certain properties;
+// notably the hash function and prime-field size.  The default hash function is
+// Blake2b-256. Any valid hash function as documented in "crypto" can be used.
+// There are three wayts for creating an SRP environment:
+//   New()
 type SRP struct {
 	h  crypto.Hash
 	pf *primeField
@@ -200,8 +202,8 @@ type Verifier struct {
 }
 
 // Verifier generates a password verifier for user I and passphrase p
-// Return tuple containing hashed identity, salt, verifier. Caller
-// is expected to store the tuple in some persistent DB.
+// in the environment 's'. It returns an instance of Verifier that holds the
+// parameters needed for a future authentication.
 func (s *SRP) Verifier(I, p []byte) (*Verifier, error) {
 	ih := s.hashbyte(I)
 	ph := s.hashbyte(p)
@@ -221,10 +223,12 @@ func (s *SRP) Verifier(I, p []byte) (*Verifier, error) {
 	return v, nil
 }
 
-// MakeSRPVerifier decodes the encoded verifier into an SRP and Verifier
-// instance. The caller uses the SRP client provided identity to lookup a DB
-// and find the encoded verifier 'b'; this encoded data contains enough
-// information to create a valid SRP instance and Verifier instance.
+// MakeSRPVerifier decodes the encoded verifier into an SRP environment
+// and Verifier instance. 'b' is an encoded verifier string previously
+// returned by Verifier.Encode().  A caller of this function uses the identity
+// provided by the SRP Client to lookup some DB to find the corresponding encoded
+// verifier string; this encoded data contains enough information to create a
+// valid SRP instance and Verifier instance.
 func MakeSRPVerifier(b string) (*SRP, *Verifier, error) {
 	v := strings.Split(b, ":")
 	if len(v) != 5 {

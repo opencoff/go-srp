@@ -144,9 +144,11 @@ For example, a client will do:
     // Now, store 'id', 'verif' in non-volatile storage such that 'verif' can be
     // retrieved by providing 'id'.
 ```
+Note that `id` is the hashed identity string for username. The server should store
+the encoded verifier string `verif` in a DB such that it can be looked up using `id`
+as the key.
 
-Note that `id` is the hashed identity string for username.
-
+### Changing the default hash function
 A client may wish to change the default hash function to something else. e.g.,::
 
 ```go
