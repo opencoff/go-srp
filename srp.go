@@ -474,7 +474,8 @@ func (s *SRP) NewServer(v *Verifier, A *big.Int) (*Server, error) {
 	b := randBigInt(pf.n * 8)
 	k := s.hashint(pf.N.Bytes(), pad(pf.g, pf.n))
 	t0 := big.NewInt(0).Mul(k, sx.v)
-	B := big.NewInt(0).Add(t0, big.NewInt(0).Exp(pf.g, b, pf.N))
+	t0.Add(t0, big.NewInt(0).Exp(pf.g, b, pf.N))
+	B := t0.Mod(t0, pf.N)
 
 	u := s.hashint(pad(A, pf.n), pad(B, pf.n))
 	if u.Cmp(zero) == 0 {
@@ -590,7 +591,7 @@ func randbytes(n int) []byte {
 // Generate and return a bigInt 'bits' bits in length
 func randBigInt(bits int) *big.Int {
 	n := bits / 8
-	if 0 == bits%8 {
+	if 0 != bits%8 {
 		n += 1
 	}
 	b := randbytes(n)
