@@ -139,8 +139,9 @@ import (
 // SRP represents an environment for the client and server to share certain properties;
 // notably the hash function and prime-field size.  The default hash function is
 // Blake2b-256. Any valid hash function as documented in "crypto" can be used.
-// There are three wayts for creating an SRP environment:
+// There are two ways for creating an SRP environment:
 //   New()
+//   NewWithHash()
 type SRP struct {
 	h  crypto.Hash
 	pf *primeField
@@ -427,28 +428,6 @@ type Server struct {
 	xM   []byte
 }
 
-// ServerBegin begins the server processing by parsing the credentials sent by
-// the client.
-// The caller is expected to use 'I' to lookup some database and
-// find the verifier, salt and other user specific parameters.
-func (s *SRP) ServerBegin(creds string) (I []byte, A *big.Int, err error) {
-	v := strings.Split(creds, ":")
-	if len(v) != 2 {
-		err = fmt.Errorf("Invalid client public key")
-		return
-	}
-
-	//fmt.Printf("v0: %s\nv1: %s\n", v[0], v[1])
-
-	A, ok := big.NewInt(0).SetString(v[1], 16)
-	if !ok {
-		err = fmt.Errorf("Invalid client public key A")
-		return
-	}
-
-	I, err = hex.DecodeString(v[0])
-	return
-}
 
 // NewServer constructs a Server instance for computing a shared secret.
 func (s *SRP) NewServer(v *Verifier, A *big.Int) (*Server, error) {
