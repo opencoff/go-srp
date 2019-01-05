@@ -101,16 +101,21 @@ func (db *userdb) verify(t *testing.T, user, pass []byte, goodPw bool) {
 	sCreds := srv.Credentials()
 
 	// Server  --> sends 'sCreds' to client
+	// Marshal the server for use later as-if the client can't remain connected
+	srv_m := srv.Marshal()
 
 	// Client generates a mutual auth and sends to server
 	mauth, err := c.Generate(sCreds)
 	assert(err == nil, "Client.Generate: %s", err)
 
 	// Client --> sends 'mauth' to server
+	// Unmarshal the previously marshaled server for use after the client reconnects
+	srv_um, err := UnmarshalServer(srv_m)
+	assert(err == nil, "UnmarshalServer: %s", err)
 
 	// Server validates the mutual authenticator and creates its proof of having derived
 	// the same key. This proof is sent to the client.
-	proof, ok := srv.ClientOk(mauth)
+	proof, ok := srv_um.ClientOk(mauth)
 	if goodPw {
 		assert(ok, "server: bad client proof")
 	} else {
@@ -128,7 +133,7 @@ func (db *userdb) verify(t *testing.T, user, pass []byte, goodPw bool) {
 	// mutual secret -- which should be identical
 
 	kc := c.RawKey()
-	ks := srv.RawKey()
+	ks := srv_um.RawKey()
 
 	assert(subtle.ConstantTimeCompare(kc, ks) == 1, "key mismatch;\nclient %x, server %x", kc, ks)
 }
