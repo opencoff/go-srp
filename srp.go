@@ -433,6 +433,13 @@ type Server struct {
 func (s *SRP) NewServer(v *Verifier, A *big.Int) (*Server, error) {
 
 	pf := s.pf
+
+	zero := big.NewInt(0)
+	z := big.NewInt(0).Mod(A, pf.N)
+	if zero.Cmp(z) == 0 {
+		return nil, fmt.Errorf("invalid client public key")
+	}
+
 	sx := &Server{
 		s:    s,
 		salt: v.s,
@@ -448,8 +455,6 @@ func (s *SRP) NewServer(v *Verifier, A *big.Int) (*Server, error) {
 	// S := (Av^u) ^ b
 	// K := H(S)
 
-	zero := big.NewInt(0)
-
 	b := randBigInt(pf.n * 8)
 	k := s.hashint(pf.N.Bytes(), pad(pf.g, pf.n))
 	t0 := big.NewInt(0).Mul(k, sx.v)
@@ -458,7 +463,7 @@ func (s *SRP) NewServer(v *Verifier, A *big.Int) (*Server, error) {
 
 	u := s.hashint(pad(A, pf.n), pad(B, pf.n))
 	if u.Cmp(zero) == 0 {
-		return nil, fmt.Errorf("Invalid server public key u")
+		return nil, fmt.Errorf("Invalid client public key u")
 	}
 
 	t0 = big.NewInt(0).Mul(A, big.NewInt(0).Exp(sx.v, u, pf.N))
