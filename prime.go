@@ -89,3 +89,56 @@ func prime(bits int) (p *big.Int, err error) {
 		}
 	}
 }
+
+// Return true if g is a generator for safe prime p
+//
+// Stinson and Paterson (Th. 6.8 pp 196):
+//   If p > 2 is a prime and g is in Zp*, then
+//   g is a generator modulo p iff g ^ (p-1)/q != 1 (mod p)
+//   for all primes q such that q divides (p-1).
+//
+// Code added as a result of bug pointed out by Dharmalingam G. (May 2019)
+func isGenerator(g, p *big.Int) bool {
+	p1 := big.NewInt(0).Sub(p, one)
+	q := big.NewInt(0).Rsh(p1, 1) // q = p-1/2 = ((p-1) >> 1)
+
+	// p is a safe prime. i.e., it is of the form 2q+1 where q is prime.
+	// p-1 = 2q, where q is a prime.
+	//
+	// All factors that divide p-1 are: {2, q, 2q}
+	//
+	// So, our check really comes down to:
+	//   1) g ^ (p1/2q) != 1 mod p
+	//		=> g ^ (2q/2q) != 1 mod p
+	//		=> g != 1 mod p
+	//	    Trivial case. We ignore this.
+	//
+	//   2) g ^ (p1/2) != 1 mod p
+	//      => g ^ (2q/2) != 1 mod p
+	//      => g ^ q != 1 mod p
+	//
+	//   3) g ^ (p1/q) != 1 mod p
+	//      => g ^ (2q/q) != 1 mod p
+	//      => g ^ 2 != 1 mod p
+	//
+
+	// g ^ 2 mod p
+	if !ok(g, big.NewInt(0).Lsh(one, 1), p) {
+		return false
+	}
+
+	// g ^ q mod p
+	if !ok(g, q, p) {
+		return false
+	}
+
+	return true
+}
+
+func ok(g, x *big.Int, p *big.Int) bool {
+	z := big.NewInt(0).Exp(g, x, p)
+	if z.Cmp(one) != 0 { // the expmod should NOT be 1
+		return true
+	}
+	return false
+}
