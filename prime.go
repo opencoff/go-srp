@@ -32,19 +32,17 @@ var smallPrimesProduct = new(big.Int).SetUint64(16294579238595022365)
 // safePrime generates a safe prime; i.e., a prime 'p' such that 2p+1 is also prime.
 func safePrime(bits int) (*big.Int, error) {
 
-	z := 0
-
-	p2 := new(big.Int)
+	a := new(big.Int)
 	for {
 		p, err := prime(bits)
 		if err != nil {
 			return nil, err
 		}
-		z++
 
-		// (p-1)/2 should also be prime
-		p2.Rsh(p, 1)
-		if p2.ProbablyPrime(20) {
+		// 2p+1
+		a = a.Lsh(p, 1)
+		a = a.Add(a, one)
+		if a.ProbablyPrime(20) {
 			return p, nil
 		}
 	}
