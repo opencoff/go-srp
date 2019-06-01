@@ -263,16 +263,16 @@ There is an example program that shows you the API usage (documented
 above).:
 
 ```sh
-    $ mkdir srp-example && cd srp-example
-    $ GOPATH=$PWD go get   github.com/opencoff/go-srp
-    $ GOPATH=$PWD go test  github.com/opencoff/go-srp
+    $ git clone https://github.com/opencoff/go-srp
+    $ cd go-srp
+    $ go test -v
 ```
 
 Finally, build the example program:
 
 ```sh
-    $ GOPATH=$PWD go build github.com/opencoff/go-srp/example
-    $ ./example
+    $ go build -o ex example/example.go
+    $ ./ex
 ```
 
 The example program outputs the raw-key from the client & server\'s
@@ -282,27 +282,17 @@ There is also a companion program in the example directory that generates prime 
 of a given size:
 
 ```sh
-    $ GOPATH=$PWD go build github.com/opencoff/go-srp/primefield
-    $ ./primefield 1024
+    $ go build -o pf example/primefield.go
+    $ ./pf 1024
 ```
 
 The above program can be run to generate multiple fields on the command line:
 ```sh
-    $ ./primefield 1024 2048 4096 8192
+    $ ./pf 1024 2048 4096 8192
 ```
 
-Using the library in your program:
+The library uses `go modules`; so, it should be straight forward to import and use.
 
-```sh
-    $ go get github.com/opencoff/go-srp
-```
-
-And in your program - as the following import path:
-
-```go
-
-    import "github.com/opencoff/go-srp"
-```
 
 ### Using the SRP Raw key to derive session keys
 The client and server both derive the same value for RawKey(). This
