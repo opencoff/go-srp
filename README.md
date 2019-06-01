@@ -259,12 +259,25 @@ above).:
 Finally, build the example program:
 
 ```sh
-    $ GOPATH=$PWD go build github.com/opencoff/go-srp/example
+    $ GOPATH=$PWD go build github.com/opencoff/go-srp/example/example.go
     $ ./example
 ```
 
 The example program outputs the raw-key from the client & server\'s
 perspective (they should be identical).
+
+There is also a companion program in the example directory that generates prime fields
+of a given size:
+
+```sh
+    $ GOPATH=$PWD go build github.com/opencoff/go-srp/example/primefield.go
+    $ ./primefield 1024
+```
+
+The above program can be run to generate multiple fields on the command line:
+```sh
+    $ ./primefield 1024 2048 4096 8192
+```
 
 Using the library in your program:
 
