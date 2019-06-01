@@ -259,7 +259,7 @@ above).:
 Finally, build the example program:
 
 ```sh
-    $ GOPATH=$PWD go build github.com/opencoff/go-srp/example/example.go
+    $ GOPATH=$PWD go build github.com/opencoff/go-srp/example
     $ ./example
 ```
 
@@ -270,7 +270,7 @@ There is also a companion program in the example directory that generates prime 
 of a given size:
 
 ```sh
-    $ GOPATH=$PWD go build github.com/opencoff/go-srp/example/primefield.go
+    $ GOPATH=$PWD go build github.com/opencoff/go-srp/primefield
     $ ./primefield 1024
 ```
 
