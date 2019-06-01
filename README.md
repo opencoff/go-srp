@@ -245,6 +245,18 @@ other bits.:
     rawkey := s.RawKey()
 ```
 
+### Generating new Safe Primes & Prime Field Generators
+The SRP library uses a pre-calculated list of large safe prime for common widths
+along wit their field generators. But, this is not advisable for large scale 
+production use. It is best that a separate background process be used to generate
+safe primes & the corresponding field generators - and store them in some cache.
+The function `findPrimeField()` can be modified to fetch from this cache. Depending 
+on the security stance, the cache can decide on a "use once" policy or
+"use N times" policy.  
+
+The function `srp.NewPrimeField()` generates and returns a new large safe prime
+and its field generator.
+
 ### Building SRP
 
 There is an example program that shows you the API usage (documented

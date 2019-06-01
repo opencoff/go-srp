@@ -162,12 +162,9 @@ func New(bits int) (*SRP, error) {
 // 'bits' sized prime-field size.
 func NewWithHash(h crypto.Hash, bits int) (*SRP, error) {
 
-	// XXX In the future we have to asynchronously generate a list of prime+generator
-	// pairs in the background so we can pick one dynamically. For now, we use a small
-	// list of primes per bit
-	pf, ok := pflist[bits]
-	if !ok {
-		return nil, fmt.Errorf("srp: invalid prime-field size: %d", bits)
+	pf, err := findPrimeField(bits)
+	if err != nil {
+		return nil, err
 	}
 
 	s := &SRP{
@@ -611,6 +608,12 @@ func randBigInt(bits int) *big.Int {
 func NewPrimeField(nbits int) (p, g *big.Int, err error) {
 	var pf *primeField
 
+	if nbits < 0 {
+		return nil, nil, fmt.Errorf("srp: bad field size %d", nbits)
+	} else if nbits == 0 {
+		nbits = 2048
+	}
+
 	pf, err = newPrimeField(nbits)
 	if err != nil {
 		return nil, nil, err
@@ -644,6 +647,27 @@ func newPrimeField(nbits int) (*primeField, error) {
 		}
 	}
 	return nil, fmt.Errorf("can't find generator after 100 tries")
+}
+
+// Find a pre-generated safe-prime and its generator from our list below.
+// In the future, we can use some other external eternal source of such things.
+// NB: Generating large safe-primes is computationally taxing! It is best done offline.
+func findPrimeField(bits int) (*primeField, error) {
+
+	switch {
+	case bits < 0:
+		return nil, fmt.Errorf("srp: invalid prime-field size %d", bits)
+
+	case bits == 0:
+		bits = 2048
+		fallthrough
+
+	default:
+		if pf, ok := pflist[bits]; ok {
+			return pf, nil
+		}
+		return nil, fmt.Errorf("srp: invalid prime-field size %d", bits)
+	}
 }
 
 // build the database of prime fields and generators
