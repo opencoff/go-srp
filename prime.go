@@ -43,7 +43,7 @@ func safePrime(bits int) (*big.Int, error) {
 		a = a.Lsh(p, 1)
 		a = a.Add(a, one)
 		if a.ProbablyPrime(20) {
-			return p, nil
+			return a, nil
 		}
 	}
 
