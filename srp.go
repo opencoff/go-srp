@@ -181,14 +181,14 @@ func NewWithHash(h crypto.Hash, bits int) (*SRP, error) {
 func ServerBegin(creds string) (string, *big.Int, error) {
 	v := strings.Split(creds, ":")
 	if len(v) != 2 {
-		return "", nil, fmt.Errorf("invalid client public key")
+		return "", nil, fmt.Errorf("srp: invalid client public key")
 	}
 
 	//fmt.Printf("v0: %s\nv1: %s\n", v[0], v[1])
 
 	A, ok := big.NewInt(0).SetString(v[1], 16)
 	if !ok {
-		return "", nil, fmt.Errorf("Invalid client public key A")
+		return "", nil, fmt.Errorf("srp: invalid client public key A")
 	}
 
 	return v[0], A, nil
@@ -374,29 +374,29 @@ func (c *Client) Credentials() string {
 func (c *Client) Generate(srv string) (string, error) {
 	v := strings.Split(srv, ":")
 	if len(v) != 2 {
-		return "", fmt.Errorf("invalid server public key")
+		return "", fmt.Errorf("srp: invalid server public key")
 	}
 
 	salt, err := hex.DecodeString(v[0])
 	if err != nil {
-		return "", fmt.Errorf("invalid server public key")
+		return "", fmt.Errorf("srp: invalid server public key")
 	}
 
 	B, ok1 := big.NewInt(0).SetString(v[1], 16)
 	if !ok1 {
-		return "", fmt.Errorf("invalid server public key")
+		return "", fmt.Errorf("srp: invalid server public key")
 	}
 
 	pf := c.s.pf
 	zero := big.NewInt(0)
 	z := big.NewInt(0).Mod(B, pf.N)
 	if zero.Cmp(z) == 0 {
-		return "", fmt.Errorf("invalid server public key")
+		return "", fmt.Errorf("srp: invalid server public key")
 	}
 
 	u := c.s.hashint(pad(c.xA, pf.n), pad(B, pf.n))
 	if u.Cmp(zero) == 0 {
-		return "", fmt.Errorf("invalid server public key")
+		return "", fmt.Errorf("srp: invalid server public key")
 	}
 
 	// S := ((B - kg^x) ^ (a + ux)) % N
@@ -457,7 +457,7 @@ func (s *SRP) NewServer(v *Verifier, A *big.Int) (*Server, error) {
 	zero := big.NewInt(0)
 	z := big.NewInt(0).Mod(A, pf.N)
 	if zero.Cmp(z) == 0 {
-		return nil, fmt.Errorf("invalid client public key")
+		return nil, fmt.Errorf("srp: invalid client public key")
 	}
 
 	sx := &Server{
@@ -483,7 +483,7 @@ func (s *SRP) NewServer(v *Verifier, A *big.Int) (*Server, error) {
 
 	u := s.hashint(pad(A, pf.n), pad(B, pf.n))
 	if u.Cmp(zero) == 0 {
-		return nil, fmt.Errorf("Invalid client public key u")
+		return nil, fmt.Errorf("srp: invalid client public key u")
 	}
 
 	t0 = big.NewInt(0).Mul(A, big.NewInt(0).Exp(sx.v, u, pf.N))
@@ -570,7 +570,7 @@ func pad(x *big.Int, n int) []byte {
 	b := x.Bytes()
 	if len(b) < n {
 		z := n - len(b)
-		p := make([]byte, n, n)
+		p := make([]byte, n)
 		for i := 0; i < z; i++ {
 			p[i] = 0
 		}
@@ -595,7 +595,7 @@ func randbytes(n int) []byte {
 // Generate and return a bigInt 'bits' bits in length
 func randBigInt(bits int) *big.Int {
 	n := bits / 8
-	if 0 != bits%8 {
+	if (bits%8) != 0 {
 		n += 1
 	}
 	b := randbytes(n)
@@ -646,7 +646,7 @@ func newPrimeField(nbits int) (*primeField, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("can't find generator after 100 tries")
+	return nil, fmt.Errorf("srp: can't find generator after 100 tries")
 }
 
 // Find a pre-generated safe-prime and its generator from our list below.
@@ -685,7 +685,7 @@ func init() {
 			N: atobi(v[2], 0),
 			n: b / 8,
 		}
-		if 0 == big.NewInt(0).Cmp(pf.N) {
+		if big.NewInt(0).Cmp(pf.N) == 0 {
 			panic(fmt.Sprintf("srp init: N (%s) is zero", v[2]))
 		}
 		pflist[b] = pf

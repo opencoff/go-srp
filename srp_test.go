@@ -31,9 +31,6 @@ func newAsserter(t *testing.T) func(cond bool, msg string, args ...interface{}) 
 	}
 }
 
-type user struct {
-	v *Verifier
-}
 
 type userdb struct {
 	s *SRP
@@ -133,7 +130,7 @@ func (db *userdb) verify(t *testing.T, user, pass []byte, goodPw bool) {
 	kc := c.RawKey()
 	ks := srv.RawKey()
 
-	assert(1 == subtle.ConstantTimeCompare(kc, ks), "key mismatch;\nclient %x, server %x", kc, ks)
+	assert(subtle.ConstantTimeCompare(kc, ks) == 1, "key mismatch;\nclient %x, server %x", kc, ks)
 }
 
 func TestSRP(t *testing.T) {
@@ -154,38 +151,3 @@ func TestSRP(t *testing.T) {
 	}
 }
 
-func mustDecode(s string) []byte {
-	n := len(s)
-	b := make([]byte, 0, n)
-	var z, x byte
-	var shift uint = 4
-	for i := 0; i < n; i++ {
-		c := s[i]
-		switch {
-		case '0' <= c && c <= '9':
-			x = c - '0'
-		case 'a' <= c && c <= 'f':
-			x = c - 'a' + 10
-		case 'A' <= c && c <= 'F':
-			x = c - 'A' + 10
-		case c == ' ' || c == '\n' || c == '\t':
-			continue
-		default:
-			panic(fmt.Sprintf("invalid hex char %c in %s", c, s))
-		}
-
-		if shift == 0 {
-			z |= x
-			b = append(b, z)
-			z = 0
-			shift = 4
-		} else {
-			z |= (x << shift)
-			shift -= 4
-		}
-	}
-	if shift != 4 {
-		b = append(b, z)
-	}
-	return b
-}

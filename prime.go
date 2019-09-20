@@ -81,10 +81,8 @@ func isGenerator(g, p *big.Int) bool {
 
 func ok(g, x *big.Int, p *big.Int) bool {
 	z := big.NewInt(0).Exp(g, x, p)
-	if z.Cmp(one) != 0 { // the expmod should NOT be 1
-		return true
-	}
-	return false
+	// the expmod should NOT be 1
+	return z.Cmp(one) != 0
 }
 
 // vim: noexpandtab:sw=8:ts=8:tw=92:
