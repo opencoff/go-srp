@@ -31,7 +31,6 @@ func newAsserter(t *testing.T) func(cond bool, msg string, args ...interface{}) 
 	}
 }
 
-
 type userdb struct {
 	s *SRP
 	u map[string]string
@@ -155,4 +154,3 @@ func TestSRP(t *testing.T) {
 		db.verify(t, user, badpass, false)
 	}
 }
-

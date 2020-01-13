@@ -9,12 +9,11 @@
 package main
 
 import (
-	"os"
 	"fmt"
-	"strconv"
 	"github.com/opencoff/go-srp"
+	"os"
+	"strconv"
 )
-
 
 func main() {
 

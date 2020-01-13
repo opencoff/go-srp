@@ -1,8 +1,5 @@
 module github.com/opencoff/go-srp
 
-require (
-	golang.org/x/crypto v0.0.0-20190530122614-20be4c3c3ed5
-	golang.org/x/sys v0.0.0-20190412213103-97732733099d
-)
-
 go 1.13
+
+require golang.org/x/crypto v0.0.0-20200109152110-61a87790db17
