@@ -2,6 +2,6 @@ module github.com/opencoff/go-srp
 
 go 1.20
 
-require golang.org/x/crypto v0.17.0
+require golang.org/x/crypto v0.21.0
 
-require golang.org/x/sys v0.15.0 // indirect
+require golang.org/x/sys v0.18.0 // indirect
